@@ -1,0 +1,13 @@
+**.ipynb_checkpoints
+.virtual_documents
+**.DS_Store
+**__pycache__/
+data/embeddings
+data/data_dump_aact
+data/variables
+data/drug_names_terminology/drugdb_full_database.xml
+data/annotated_aact/ct_neuro_test_annotated_BioLinkBERT-base_20240311.csv
+data/annotated_aact/ct_neuro_test_annotated_BioLinkBERT-base_20240320.csv
+data/raw_aact
+missing_cluster.csv
+missing_cluster_nsc_words.csv
