@@ -72,7 +72,7 @@ def embed_text_to_vec(df, column_to_embed, model_name):
 
 
 if __name__ == '__main__':
-    df = load_and_preprocess_data('data/annotated_aact/normalized_annotations_unique_19607_with_details.csv')
+    df = load_and_preprocess_data('../data/annotated_aact/normalized_annotations_unique_19607_with_details.csv')
     column_to_embed = "preprocessed_trial_no_stopwords"
 
     ### BERT
@@ -104,10 +104,10 @@ if __name__ == '__main__':
     for i, abst in enumerate(tqdm(abstract_batch, desc="Generating Embeddings")):
         _, mat[i], _ = generate_embeddings(abst, tokenizer, model, device)
         last_iter = np.array([i])
-        np.save('./data/variables/last_iter_batch_1', last_iter)
+        np.save('../data/variables/last_iter_batch_1', last_iter)
 
     # save embedding
-    np.save(f'./data/embeddings/embeddings_{checkpoint.replace("/","_")}', mat)
+    np.save(f'../data/embeddings/embeddings_{checkpoint.replace("/","_")}', mat)
 
     # End timing
     end_time = time.time()
