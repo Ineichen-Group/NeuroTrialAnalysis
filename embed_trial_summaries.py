@@ -1,16 +1,13 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 import gensim
 from transformers import AutoTokenizer, AutoModel
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from sklearn.manifold import TSNE
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 import re
 from src.embedding import generate_embeddings
-from sklearn.cluster import KMeans
 import torch
 from tqdm import tqdm
 import time
@@ -38,6 +35,18 @@ def preprocess_text(text, remove_stopwords=True):
 
     return preprocessed_text
 
+def load_and_preprocess_data(file_name):
+    df = pd.read_csv(file_name)
+    print(df.shape)
+    # Apply preprocessing without stop words
+    df['preprocessed_trial_no_stopwords'] = df['brief_summary_description'].apply(
+        lambda x: preprocess_text(x, remove_stopwords=True))
+
+    # Apply preprocessing but keep stop words
+    df['preprocessed_trial'] = df['brief_summary_description'].apply(
+        lambda x: preprocess_text(x, remove_stopwords=False))
+    return df
+
 def embed_text_to_vec(df, column_to_embed, model_name):
 
     if model_name == "doc2vec":
@@ -61,53 +70,6 @@ def embed_text_to_vec(df, column_to_embed, model_name):
 
     return X
 
-def load_and_preprocess_data(file_name):
-    df = pd.read_csv(file_name)
-    print(df.shape)
-    # Apply preprocessing without stop words
-    df['preprocessed_trial_no_stopwords'] = df['brief_summary_description'].apply(
-        lambda x: preprocess_text(x, remove_stopwords=True))
-
-    # Apply preprocessing but keep stop words
-    df['preprocessed_trial'] = df['brief_summary_description'].apply(
-        lambda x: preprocess_text(x, remove_stopwords=False))
-    return df
-
-
-def plot_clusters(X_2d, n_clusters=5, model_name='model', df_length=None, random_state=0):
-    """
-    Clusters the given t-SNE embeddings using K-Means and plots the clusters with different colors.
-
-    Parameters:
-    - X_2d: numpy array, the t-SNE transformed embeddings of the input data.
-    - n_clusters: int, the number of clusters to form.
-    - model_name: str, the name of the model used for filename.
-    - df_length: int or None, the number of rows in the dataset (for filename purposes).
-    - random_state: int, seed used by the random number generator for reproducibility.
-
-    Returns:
-    - None, but saves a plot to a file.
-    """
-    # Perform K-Means clustering
-    kmeans = KMeans(n_clusters=n_clusters, random_state=random_state)
-    clusters = kmeans.fit_predict(X_2d)
-
-    # Plotting
-    plt.figure(figsize=(10, 5))
-    for i in range(n_clusters):
-        plt.scatter(X_2d[clusters == i, 0], X_2d[clusters == i, 1], label=f'Cluster {i}')
-
-    plt.title('2D Visualization of Clusters')
-    plt.xlabel('Dimension 1')
-    plt.ylabel('Dimension 2')
-    plt.legend()
-
-    # Check if df_length is provided for filename; use 'data' if not provided
-    df_length_str = df_length if df_length is not None else 'data'
-
-    # Save the plot
-    plt.savefig(f"viz/tsne_clusters_{model_name}_{df_length_str}.png")
-    plt.close()
 
 if __name__ == '__main__':
     df = load_and_preprocess_data('data/annotated_aact/normalized_annotations_unique_19607_with_details.csv')
@@ -155,23 +117,8 @@ if __name__ == '__main__':
     #### BASIC
     if False:
         model_name = "doc2vec"
-
         X = embed_text_to_vec(df, column_to_embed, model_name)
-        print(X.shape)
 
-        print("Reducing dimensionality")
-        tsne = TSNE(n_components=2, random_state=0)
-        X_2d = tsne.fit_transform(X)
-
-        # Plotting
-        plt.figure(figsize=(10, 5))
-        plt.scatter(X_2d[:, 0], X_2d[:, 1])
-        plt.title('2D Visualization of Text Embeddings')
-        plt.xlabel('Dimension 1')
-        plt.ylabel('Dimension 2')
-
-        plt.savefig(f"viz/tsne_embedding_{model_name}_{len(df)}.png")
-        plot_clusters(X_2d, n_clusters=5, model_name='doc2vec', df_length=len(df))
 
 
 
