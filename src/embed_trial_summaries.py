@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel, AutoModelForTokenClassification
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -78,8 +78,11 @@ if __name__ == '__main__':
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("running on device: {}".format(device))
     abstracts = df[column_to_embed].tolist()
+    local_checkpoint = False
     # specifying model
     checkpoint = "microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext"
+    if local_checkpoint:
+        checkpoint = "./model/michiyasunaga_biolinkbert/epochs_15_data_size_100_iter_2/"
     # "dmis-lab/biobert-v1.1"
     # "dmis-lab/biobert-v1.1"
     # "allenai/scibert_scivocab_uncased"
@@ -94,6 +97,8 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
     model = AutoModel.from_pretrained(checkpoint)
+    if local_checkpoint:
+        model = AutoModelForTokenClassification.from_pretrained(checkpoint)
     mat = np.empty([len(abstracts), 768])
     abstract_batch = abstracts
     # Start timing
@@ -101,12 +106,19 @@ if __name__ == '__main__':
 
     # Process abstracts in batches and track progress with tqdm
     for i, abst in enumerate(tqdm(abstract_batch, desc="Generating Embeddings")):
-        _, mat[i], _ = generate_embeddings(abst, tokenizer, model, device)
+        if local_checkpoint:
+            _, mat[i], _ = generate_embeddings(abst, tokenizer, model, device, classification_model=True)
+        else:
+            _, mat[i], _ = generate_embeddings(abst, tokenizer, model, device)
         last_iter = np.array([i])
         np.save('./data/variables/last_iter_batch_1', last_iter)
 
+    model_name = checkpoint.replace("/","_")
+
+    if local_checkpoint:
+        model_name = "michiyasunaga_biolinkbert_v2"
     # save embedding
-    np.save(f'./data/embeddings/embeddings_{checkpoint.replace("/","_")}', mat)
+    np.save(f'./data/embeddings/embeddings_{model_name}', mat)
 
     # End timing
     end_time = time.time()
