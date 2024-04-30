@@ -891,7 +891,7 @@ def plot_tsne_colors(tsne, colors, x_lim, y_lim, ax=None, plot_type=None, axis_o
         
         
         
-def plot_tsne_years(tsne, colors, x_lim, y_lim, ax=None, fontsize=7, plot_type=None, colorbar=True, colorbar_type=None, axis_on=False, rs = 42, top_year="2021"):
+def plot_tsne_years(tsne, colors, x_lim, y_lim, ax=None, fontsize=7, plot_type=None, colorbar=True, colorbar_type=None, axis_on=False, rs = 42, min_year="1970", top_year="2021"):
     """Plot t-SNE embedding with colors (by years).
     
     Parameters
@@ -975,7 +975,7 @@ def plot_tsne_years(tsne, colors, x_lim, y_lim, ax=None, fontsize=7, plot_type=N
 
         cbar.set_alpha(1)
         cbar.ax.get_yaxis().set_ticks([0,1])
-        cbar.ax.get_yaxis().set_ticklabels(['1970', top_year])
+        cbar.ax.get_yaxis().set_ticklabels([min_year, top_year])
         cbar.ax.tick_params(labelsize=fontsize)
         
         
