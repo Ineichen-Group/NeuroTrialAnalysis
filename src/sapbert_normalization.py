@@ -7,11 +7,12 @@ from transformers import AutoTokenizer, AutoModel
 from scipy.spatial.distance import cdist
 import time
 from multiprocessing import Pool, cpu_count, set_start_method
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+import json
+#os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from tqdm.auto import tqdm  # Use 'auto' to ensure compatibility with notebooks and scripts
 
-def load_snomed_terminology(snomed):
 
+def load_snomed_terminology(snomed):
     snomed_sf_id_pairs = []
 
     for snomed_id in tqdm(snomed.graph.nodes):
@@ -23,6 +24,7 @@ def load_snomed_terminology(snomed):
     print(len(snomed_sf_id_pairs))
 
     return snomed_sf_id_pairs
+
 
 def load_snomed_embeddings(path):
     # Define the directory where your files are stored
@@ -93,7 +95,11 @@ def process_conditions(row, model, tokenizer, snomed, all_reps_emb_full):
 
     for term in terms:
         if len(term) > 4 or term == 'pain':  # Conditional processing based on term criteria
-            snomed_term, snomed_termid, snomed_norm, min_distance, predicted_probability = map_to_snomed(model, tokenizer, snomed, all_reps_emb_full, term)
+            snomed_term, snomed_termid, snomed_norm, min_distance, predicted_probability = map_to_snomed(model,
+                                                                                                         tokenizer,
+                                                                                                         snomed,
+                                                                                                         all_reps_emb_full,
+                                                                                                         term)
             snomed_terms.append(snomed_term)
             snomed_termids.append(snomed_termid)
             snomed_norms.append(snomed_norm)
@@ -117,12 +123,13 @@ def process_conditions(row, model, tokenizer, snomed, all_reps_emb_full):
     return '|'.join(snomed_terms), '|'.join(snomed_termids), '|'.join(snomed_norms), '|'.join(min_distances), '|'.join(
         predicted_probabilities), norm_to_terms, term_to_norm
 
+
 def process_chunk(chunk, model, tokenizer, snomed, all_reps_emb_full, column_name):
-    return chunk[column_name].apply(lambda x: pd.Series(process_conditions(x, model, tokenizer, snomed, all_reps_emb_full)))
+    return chunk[column_name].apply(
+        lambda x: pd.Series(process_conditions(x, model, tokenizer, snomed, all_reps_emb_full)))
 
 
 if __name__ == '__main__':
-
     release_id = '20240401'
     SNOMED_PATH = '../data/snomed/SnomedCT_InternationalRF2_PRODUCTION_20240401T120000Z'  # you need to download your own SNOMED distribution
     snomed = Snomed(SNOMED_PATH, release_id=release_id)
@@ -134,37 +141,63 @@ if __name__ == '__main__':
 
     df_all = pd.read_csv('../data/annotated_aact/normalized_annotations_unique_19607.csv', index_col=False)
 
+    df_all = df_all.head(5)
     tokenizer = AutoTokenizer.from_pretrained("cambridgeltl/SapBERT-from-PubMedBERT-fulltext")
     model = AutoModel.from_pretrained("cambridgeltl/SapBERT-from-PubMedBERT-fulltext")
 
+    target_column = 'canonical_BioLinkBERT-base_conditions'
+    source_annotations_model = 'linkbert'
+
     start_time = time.time()
     tqdm.pandas(desc="Processing Conditions")  # This line prepares tqdm to work with pandas apply
-    results_aact = df_all['canonical_aact_conditions'].progress_apply(
-        lambda x: pd.Series(process_conditions(x,  model, tokenizer, snomed, all_reps_emb_full))
+    results = df_all[target_column].progress_apply(
+        lambda x: pd.Series(process_conditions(x, model, tokenizer, snomed, all_reps_emb_full))
     )
-    df_all[['aact_snomed_term', 'aact_snomed_termid', 'aact_snomed_term_norm', 'aact_cdist', 'aact_softmax_prob']] = \
-    results_aact[[0, 1, 2, 3, 4]]
+    df_all[[f'{source_annotations_model}_snomed_term', f'{source_annotations_model}_snomed_termid',
+            f'{source_annotations_model}_snomed_term_norm', f'{source_annotations_model}_cdist',
+            f'{source_annotations_model}_softmax_prob']] = \
+        results[[0, 1, 2, 3, 4]]
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
 
-    df_all.to_csv('../data/annotated_aact/sapbert_normalized_annotations_aact_19607.csv')
+    df_all.to_csv(f'../data/annotated_aact/sapbert_normalized_annotations_{source_annotations_model}_{len(df_all)}.csv')
+
+    ### Mapping dictionaries
+    combined_term_to_norm = {}
+    combined_norm_to_term = {}
+
+    # Iterate through each dictionary in column index 4 of the DataFrame and update the combined dictionary
+    for dict_item in results[6]:
+        combined_term_to_norm.update(dict_item)
+
+    # Iterate through each dictionary in column index 4 of the DataFrame and update the combined dictionary
+    for dict_item in results[5]:
+        combined_norm_to_term.update(dict_item)
+
+    filename = f'../data/snomed/{source_annotations_model}_combined_term_to_norm_dict_{len(df_all)}.json'
+    filename_2 = f'../data/snomed/{source_annotations_model}_combined_norm_to_term_dict_{len(df_all)}.json'
+
+    # Save the dictionary to a JSON file
+    with open(filename, 'w') as f:
+        json.dump(combined_term_to_norm, f, indent=4)
+    with open(filename_2, 'w') as f:
+        json.dump(combined_norm_to_term, f, indent=4)
 
     ### PARALLELISM
     # with Pool(num_cores) as pool:
     #    results = pool.starmap(process_chunk, [(chunk, model, tokenizer, snomed, all_reps_emb_full, target_column) for chunk in chunks])
     #    combined_results = pd.concat(results, ignore_index=True)
 
-    target_column = 'canonical_aact_conditions'  # Parameterize the target column
-    num_cores = cpu_count() - 2 # Get the number of CPU cores
-    chunk_size = len(df_all) // num_cores  # Calculate the chunk size
+    #target_column = 'canonical_aact_conditions'  # Parameterize the target column
+    #num_cores = cpu_count() - 2  # Get the number of CPU cores
+    #chunk_size = len(df_all) // num_cores  # Calculate the chunk size
 
-    #print(f"Processing {len(df_all)} with {num_cores} cores.")
+    # print(f"Processing {len(df_all)} with {num_cores} cores.")
 
     # Split df_all into chunks
-    chunks = [df_all.iloc[i:i + chunk_size] for i in range(0, len(df_all), chunk_size)]
+    #chunks = [df_all.iloc[i:i + chunk_size] for i in range(0, len(df_all), chunk_size)]
 
-    #df_all[['aact_snomed_term', 'aact_snomed_termid', 'aact_snomed_term_norm', 'aact_cdist', 'aact_softmax_prob']] = \
-    #combined_results[[0, 1, 2, 3, 4]]
-
+    # df_all[['aact_snomed_term', 'aact_snomed_termid', 'aact_snomed_term_norm', 'aact_cdist', 'aact_softmax_prob']] = \
+    # combined_results[[0, 1, 2, 3, 4]]
