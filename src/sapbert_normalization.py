@@ -6,6 +6,7 @@ from Snomed import Snomed
 from transformers import AutoTokenizer, AutoModel
 from scipy.spatial.distance import cdist
 import time
+import torch
 from multiprocessing import Pool, cpu_count, set_start_method
 import json
 #os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -56,12 +57,17 @@ def softmax(x):
     return e_x / e_x.sum(axis=0)
 
 
-def map_to_snomed(model, tokenizer, snomed, all_reps_emb_full, query):
+def map_query_to_snomed(model, tokenizer, snomed, all_reps_emb_full, query):
+    if torch.cuda.is_available():
+        model = model.to('cuda')  # Move the model to GPU
     query_toks = tokenizer.batch_encode_plus([query],
                                              padding="max_length",
                                              max_length=25,
                                              truncation=True,
                                              return_tensors="pt")
+    if torch.cuda.is_available():
+        query_toks = query_toks.to('cuda')  # Move tensors to GPU
+
     query_output = model(**query_toks)
     query_cls_rep = query_output[0][:, 0, :]
     dist = cdist(query_cls_rep.cpu().detach().numpy(), all_reps_emb_full)
@@ -77,15 +83,14 @@ def map_to_snomed(model, tokenizer, snomed, all_reps_emb_full, query):
     return term, term_id, snomed[term_id]['desc'], round(min_distance, 4), round(predicted_probability, 4)
 
 
-def process_conditions(row, model, tokenizer, snomed, all_reps_emb_full):
+def map_list_of_entities_to_snomed(row, model, tokenizer, target_entity_type, snomed, all_reps_emb_full):
     if pd.isna(row) or not isinstance(row, str):
         # Return empty strings and empty dictionaries for all the values
         return "", "", "", {}, {}, "", ""
-
     terms = row.split('|')
     snomed_terms = []
     snomed_termids = []
-    snomed_norms = []
+    snomed_normalized_terms = []
     min_distances = []  # List to store minimum distances
     predicted_probabilities = []  # List to store predicted probabilities
 
@@ -94,75 +99,80 @@ def process_conditions(row, model, tokenizer, snomed, all_reps_emb_full):
     term_to_norm = {}  # Each term from the row and the SNOMED norm to which it was mapped
 
     for term in terms:
-        if len(term) > 4 or term == 'pain':  # Conditional processing based on term criteria
-            snomed_term, snomed_termid, snomed_norm, min_distance, predicted_probability = map_to_snomed(model,
-                                                                                                         tokenizer,
-                                                                                                         snomed,
-                                                                                                         all_reps_emb_full,
-                                                                                                         term)
-            snomed_terms.append(snomed_term)
-            snomed_termids.append(snomed_termid)
-            snomed_norms.append(snomed_norm)
-            min_distances.append(
-                str(round(min_distance, 4)))  # Convert to string and store the rounded minimum distance
-            predicted_probabilities.append(
-                str(round(predicted_probability, 4)))  # Convert to string and store the rounded predicted probability
+        if target_entity_type == "conditions":
+            if len(term) < 4 and term != 'pain':
+                continue # issues with abbreviations that are not disambiguated
 
-            # Populate dictionaries
-            if snomed_norm in norm_to_terms:
-                norm_to_terms[snomed_norm].append(term)
-            else:
-                norm_to_terms[snomed_norm] = [term]
+        snomed_term, snomed_termid, snomed_normalized_representation, min_distance, predicted_probability = map_query_to_snomed(model,
+                                                                                                                                tokenizer,
+                                                                                                                                snomed,
+                                                                                                                                all_reps_emb_full,
+                                                                                                                                term)
+        snomed_terms.append(snomed_term)
+        snomed_termids.append(snomed_termid)
+        snomed_normalized_terms.append(snomed_normalized_representation)
+        min_distances.append(
+            str(round(min_distance, 4)))  # Convert to string and store the rounded minimum distance
+        predicted_probabilities.append(
+            str(round(predicted_probability, 4)))  # Convert to string and store the rounded predicted probability
 
-            term_to_norm[term] = snomed_norm
+        # Populate dictionaries
+        if snomed_normalized_representation in norm_to_terms:
+            norm_to_terms[snomed_normalized_representation].append(term)
+        else:
+            norm_to_terms[snomed_normalized_representation] = [term]
+
+        term_to_norm[term] = snomed_normalized_representation
 
     # Ensure unique terms in norm_to_terms dictionary
     for key in norm_to_terms:
         norm_to_terms[key] = list(set(norm_to_terms[key]))
 
-    return '|'.join(snomed_terms), '|'.join(snomed_termids), '|'.join(snomed_norms), '|'.join(min_distances), '|'.join(
+    return '|'.join(snomed_terms), '|'.join(snomed_termids), '|'.join(snomed_normalized_terms), '|'.join(min_distances), '|'.join(
         predicted_probabilities), norm_to_terms, term_to_norm
 
 
 def process_chunk(chunk, model, tokenizer, snomed, all_reps_emb_full, column_name):
     return chunk[column_name].apply(
-        lambda x: pd.Series(process_conditions(x, model, tokenizer, snomed, all_reps_emb_full)))
+        lambda x: pd.Series(map_list_of_entities_to_snomed(x, model, tokenizer, snomed, all_reps_emb_full)))
 
 
 if __name__ == '__main__':
     release_id = '20240401'
-    SNOMED_PATH = '../data/snomed/SnomedCT_InternationalRF2_PRODUCTION_20240401T120000Z'  # you need to download your own SNOMED distribution
+    data_path = '../data/'
+    SNOMED_PATH = data_path + 'snomed/SnomedCT_InternationalRF2_PRODUCTION_20240401T120000Z'  # you need to download your own SNOMED distribution
     snomed = Snomed(SNOMED_PATH, release_id=release_id)
     snomed.load_snomed()
     snomed_sf_id_pairs = load_snomed_terminology(snomed)
 
-    embeddings_directory_path = '../data/embeddings/normalization'
+    embeddings_directory_path = data_path + 'embeddings/normalization'
     all_reps_emb_full = load_snomed_embeddings(embeddings_directory_path)
 
-    df_all = pd.read_csv('../data/annotated_aact/normalized_annotations_unique_19607.csv', index_col=False)
+    df_all = pd.read_csv(data_path +'annotated_aact/normalized_annotations_unique_19607.csv', index_col=False)
 
-    df_all = df_all.head(5)
+    df_all = df_all.head(3)
     tokenizer = AutoTokenizer.from_pretrained("cambridgeltl/SapBERT-from-PubMedBERT-fulltext")
     model = AutoModel.from_pretrained("cambridgeltl/SapBERT-from-PubMedBERT-fulltext")
 
-    target_column = 'canonical_BioLinkBERT-base_conditions'
+    target_entity_type = 'interventions' # or 'conditions'
+    target_column = f'canonical_BioLinkBERT-base_{target_entity_type}'
     source_annotations_model = 'linkbert'
 
     start_time = time.time()
     tqdm.pandas(desc="Processing Conditions")  # This line prepares tqdm to work with pandas apply
     results = df_all[target_column].progress_apply(
-        lambda x: pd.Series(process_conditions(x, model, tokenizer, snomed, all_reps_emb_full))
+        lambda x: pd.Series(map_list_of_entities_to_snomed(x, model, tokenizer, target_entity_type, snomed, all_reps_emb_full))
     )
-    df_all[[f'{source_annotations_model}_snomed_term', f'{source_annotations_model}_snomed_termid',
-            f'{source_annotations_model}_snomed_term_norm', f'{source_annotations_model}_cdist',
-            f'{source_annotations_model}_softmax_prob']] = \
+    df_all[[f'{source_annotations_model}_snomed_term_{target_entity_type}', f'{source_annotations_model}_snomed_termid_{target_entity_type}',
+            f'{source_annotations_model}_snomed_term_norm{target_entity_type}', f'{source_annotations_model}_cdist_{target_entity_type}',
+            f'{source_annotations_model}_softmax_prob_{target_entity_type}']] = \
         results[[0, 1, 2, 3, 4]]
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
 
-    df_all.to_csv(f'../data/annotated_aact/sapbert_normalized_annotations_{source_annotations_model}_{len(df_all)}.csv')
+    df_all.to_csv(f'{data_path}annotated_aact/sapbert_normalized_annotations_{source_annotations_model}_{len(df_all)}_{target_entity_type}.csv')
 
     ### Mapping dictionaries
     combined_term_to_norm = {}
@@ -176,8 +186,8 @@ if __name__ == '__main__':
     for dict_item in results[5]:
         combined_norm_to_term.update(dict_item)
 
-    filename = f'../data/snomed/{source_annotations_model}_combined_term_to_norm_dict_{len(df_all)}.json'
-    filename_2 = f'../data/snomed/{source_annotations_model}_combined_norm_to_term_dict_{len(df_all)}.json'
+    filename = f'{data_path}snomed/{source_annotations_model}_combined_term_to_norm_dict_{len(df_all)}_{target_entity_type}.json'
+    filename_2 = f'{data_path}snomed/{source_annotations_model}_combined_norm_to_term_dict_{len(df_all)}_{target_entity_type}.json'
 
     # Save the dictionary to a JSON file
     with open(filename, 'w') as f:
