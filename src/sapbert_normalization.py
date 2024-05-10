@@ -159,7 +159,7 @@ if __name__ == '__main__':
     source_annotations_model = 'linkbert'
 
     start_time = time.time()
-    tqdm.pandas(desc="Processing Conditions")  # This line prepares tqdm to work with pandas apply
+    tqdm.pandas(desc=f"Processing {target_entity_type}")  # This line prepares tqdm to work with pandas apply
     results = df_all[target_column].progress_apply(
         lambda x: pd.Series(map_list_of_entities_to_snomed(x, model, tokenizer, target_entity_type, snomed, all_reps_emb_full))
     )
