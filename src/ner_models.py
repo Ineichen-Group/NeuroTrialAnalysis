@@ -183,7 +183,11 @@ class NERModel:
                 print("Number of tokens ({}) too large, truncating sentence: {}".format(num_tokens, sent[:50] + "[...]"))
                 tokenized_sentence = tokenized_sentence[:510]
                 sent = self.tokenizer.convert_tokens_to_string(tokenized_sentence)
-            ner_results = self.nlp(sent)
+            try:
+                ner_results = self.nlp(sent)
+            except Exception as e:
+                print(f"Failed to get NER results due to error: {e}")
+                return "Failed NER extraction!"
             if self.use_custom_entities_grouping:
                 ner_results = self.group_entities_custom_for_biobert(ner_results) #NOT NEEDED IF WE ARE USING THE GROUPED ENTITIES FLAG
             if self.normalize_pred_representation:
