@@ -70,7 +70,7 @@ def map_query_to_snomed(model, tokenizer, snomed, all_reps_emb_full, query):
 
     query_output = model(**query_toks)
     query_cls_rep = query_output[0][:, 0, :]
-    dist = cdist(query_cls_rep.cpu().detach().numpy(), all_reps_emb_full)
+    dist = cdist(query_cls_rep.cpu().detach().numpy(), all_reps_emb_full) # TODO: try replacing with torch function to speed up: https://pytorch.org/docs/stable/generated/torch.cdist.html
     nn_index = np.argmin(dist)
     min_distance = dist[0, nn_index]  # Extract the minimum distance
 
