@@ -21,9 +21,8 @@ and showed that the best-performing one for condition and drug entities was BioL
 
 We use the official title and brief summaries as the text from which we infer the named entities (see [01-AACT-for-NER.ipynb)](./01-AACT-for-NER.ipynb).
 The resulting file [aact_texts_46376.csv](./data/aact_for_ner/aact_texts_46376.csv) is processed by [run_ner_annotation.py](./src/run_ner_annotation.py).
-This will save as output the annotations obtained from BioLinkBERT.
-
-
+This will save as output the annotations obtained from BioLinkBERT in [ner_annotations_BioLinkBERT-base_46376_20240621](./data/annotated_aact/ner_outputs/ner_annotations_BioLinkBERT-base_46376_20240621).csv
+.
 
 
 ## 3.2. Entities aggregation to abstract level
@@ -33,3 +32,5 @@ This will save as output the annotations obtained from BioLinkBERT.
 ## 3.1. Prediction of entities using SapBERT
 
 ## 3.2. Entities aggregation to higher-level concepts
+
+# 5. TSNE embeddings and visualisation
