@@ -38,8 +38,17 @@ The final output from this notebook is in [aggregated_ner_annotations_basic_dict
 
 # 4. Entities linking to SNOMED
 
-## 3.1. Prediction of entities using SapBERT
+## 4.1. Prediction of entities using SapBERT
+We use the [SapBERT method](https://github.com/cambridgeltl/sapbert) to link the entities found by the NER system to the SNOMED ontology.
+This includes the steps:
+1. Download the SNOMED CT files.
+2. Process them to extract concepts, synonyms, and relationships between concepts.
+3. Keep only the ones relevant for the application, here disorder and substance.
+4. For all remaining SNOMED concepts and synonyms generate SapBERT embeddings.
+5. For each abstract-level named entity, generate a SapBERT embedding, and find the closest concepts from the SNOMED embeddings.
+6. If it is a synonym, map it to its canonical form.
 
-## 3.2. Entities aggregation to higher-level concepts
+
+## 4.2. Entities aggregation to higher-level concepts
 
 # 5. TSNE embeddings and visualisation
