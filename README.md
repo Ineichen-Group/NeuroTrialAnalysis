@@ -21,11 +21,20 @@ and showed that the best-performing one for condition and drug entities was BioL
 
 We use the official title and brief summaries as the text from which we infer the named entities (see [01-AACT-for-NER.ipynb)](./01-AACT-for-NER.ipynb).
 The resulting file [aact_texts_46376.csv](./data/aact_for_ner/aact_texts_46376.csv) is processed by [run_ner_annotation.py](./src/run_ner_annotation.py).
-This will save as output the annotations obtained from BioLinkBERT in [ner_annotations_BioLinkBERT-base_46376_20240621](./data/annotated_aact/ner_outputs/ner_annotations_BioLinkBERT-base_46376_20240621).csv
-.
+This will save as output the annotations obtained from BioLinkBERT in [ner_annotations_BioLinkBERT-base_46376_20240621](./data/annotated_aact/ner_outputs/ner_annotations_BioLinkBERT-base_46376_20240621.csv).
 
 
 ## 3.2. Entities aggregation to abstract level
+In the notebook [01-process-NER-annotations](./01-process-NER-annotations.ipynb) we aggregate the NER annotations to abstract level. 
+This includes the steps:
+1. From each abstract text, extract a dictionary of abbreviations and their long forms.
+2. Use this dictionary to replace the named entities which are abbreviations with their long form.
+3. Keep only the unique entities per trial abstract (from the BioLink entities and the AACT field).
+4. Use a basic dictionary mapping approach to map the condition and drug entities to a canoncial representation.
+5. Keep only the trials which have an annotation for drug intervention either from AACT or BioLinkBERT.
+
+The final output from this notebook is in [aggregated_ner_annotations_basic_dict_mapped_19632.csv](./data/annotated_aact/ner_outputs/aggregated_ner_annotations_basic_dict_mapped_19632.csv).
+
 
 # 4. Entities linking to SNOMED
 
