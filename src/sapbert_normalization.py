@@ -20,7 +20,7 @@ import sys
 logger = logging.getLogger(__name__)
 
 
-def load_snomed_terminology(snomed_df: pd.DataFrame, concept_type_subset: List[str]) -> List[Tuple[str, int]]:
+def load_relevant_snomed_terminology(snomed_df: pd.DataFrame, concept_type_subset: List[str]) -> List[Tuple[str, int]]:
     """
     Loads SNOMED terminology and filters it based on a subset of concept types.
     
@@ -309,7 +309,7 @@ def load_snomed_df_and_embeddings(
     """
     # Load relevant SNOMED concepts
     snomed_df = load_snomed_ct_df(SNOMED_PATH, release_id)
-    snomed_sf_id_pairs = load_snomed_terminology(snomed_df, concept_type_subset)
+    snomed_sf_id_pairs = load_relevant_snomed_terminology(snomed_df, concept_type_subset)
     print(f'Length of all SNOMED concepts: {len(snomed_sf_id_pairs)}')
 
     # Load SNOMED concepts embeddings
@@ -378,6 +378,7 @@ def main():
     ]
     SNOMED_PATH = f'{data_path}/snomed/SnomedCT_InternationalRF2_PRODUCTION_{release_id}T120000Z/Snapshot/Terminology'  # you need to download your own SNOMED distribution
     embeddings_directory_path = f'{data_path}/embeddings/snomed_normalization/'
+    #target_entity_type = 'interventions' # or 'conditions'
     
     parser = argparse.ArgumentParser(description="Run SapBERT over named entities and link to SNOMED concepts.")
     parser.add_argument("--target_entity_type", default="conditions", type=str, help="Entity type that has been obtained from NER.")

@@ -41,13 +41,21 @@ The final output from this notebook is in [aggregated_ner_annotations_basic_dict
 ## 4.1. Prediction of entities using SapBERT
 We use the [SapBERT method](https://github.com/cambridgeltl/sapbert) to link the entities found by the NER system to the SNOMED ontology.
 This includes the steps:
-1. Download the SNOMED CT files.
+1. Download the SNOMED CT files, e.g., from [NIH SNOMED CT International Edition](https://www.nlm.nih.gov/healthit/snomedct/international.html) -> Download RF2 files. 
+   We worked with version INT_20240401.
 2. Process them to extract concepts, synonyms, and relationships between concepts.
 3. Keep only the ones relevant for the application, here disorder and substance.
 4. For all remaining SNOMED concepts and synonyms generate SapBERT embeddings.
 5. For each abstract-level named entity, generate a SapBERT embedding, and find the closest concepts from the SNOMED embeddings.
 6. If it is a synonym, map it to its canonical form.
 
+The code for the above steps can be seen in notebook [00-working-with-snomed](./00-working-with-snomed.ipynb). 
+For running the code over the whole dataset we used the script [sapbert_normalization.py](./src/sapbert_normalization.py).
+It was then scheduled on a cluster with GPUs as shown in the bash script [run_parallel_sapbert_norm.sh](./src/run_parallel_sapbert_norm.sh).
+
+The outputs are saved in:
+- [sapbert_normalized_annotations_linkbert_19632_conditions.csv](./data/annotated_aact/snomed_linking_outputs/sapbert_normalized_annotations_linkbert_19632_conditions.csv)
+- [sapbert_normalized_annotations_linkbert_19632_interventions.csv](./data/annotated_aact/snomed_linking_outputs/sapbert_normalized_annotations_linkbert_19632_interventions.csv)
 
 ## 4.2. Entities aggregation to higher-level concepts
 

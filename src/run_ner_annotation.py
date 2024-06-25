@@ -16,7 +16,6 @@ short_to_long_class_names_map = {
     "CTRL": "CONTROL"
 }
 
-
 def run_inference_hugging_face_model(input_data_path_csv, hugging_face_model_name, hugging_face_model_path, group_entities_custom = False):
     model_name_str = "bert-base-uncased"
     if "/" in hugging_face_model_name:
