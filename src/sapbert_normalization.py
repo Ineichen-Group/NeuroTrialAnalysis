@@ -382,11 +382,15 @@ def main():
     
     parser = argparse.ArgumentParser(description="Run SapBERT over named entities and link to SNOMED concepts.")
     parser.add_argument("--target_entity_type", default="conditions", type=str, help="Entity type that has been obtained from NER.")
+    parser.add_argument("--source_annotations_model", default="linkbert", type=str, help="Model that was used for NER. Will be used to create the output column names.")
+    parser.add_argument("--target_column_prefix", default="canonical_BioLinkBERT-base", type=str, help="Prefix in the column name where the NER annotations are. The suffic will be the target_entity_type.")
+
     args = parser.parse_args()
 
     target_entity_type = args.target_entity_type
-    target_column = f'canonical_BioLinkBERT-base_{target_entity_type}'
-    source_annotations_model = 'linkbert'
+    target_col_prefix = args.target_column_prefix
+    source_annotations_model = args.source_annotations_model
+    target_column = f'{target_col_prefix}_{target_entity_type}'
 
     # LOAD SNOMED concepts and their embeddings
     snomed_df, snomed_sf_id_pairs, all_reps_emb_full = load_snomed_df_and_embeddings(SNOMED_PATH, release_id, concept_type_subset, embeddings_directory_path, 'disorder_substance_emb_batch')
@@ -400,7 +404,9 @@ def main():
     ### LOAD SapBERT model
     tokenizer = AutoTokenizer.from_pretrained("cambridgeltl/SapBERT-from-PubMedBERT-fulltext")
     model = AutoModel.from_pretrained("cambridgeltl/SapBERT-from-PubMedBERT-fulltext")
-    df_to_annotate_file_path = f'{data_path}/annotated_aact/ner_outputs/aggregated_ner_annotations_basic_dict_mapped_19632.csv'
+
+    ### File to annotate
+    df_to_annotate_file_path = f'{data_path}/annotated_aact/ner_outputs/aggregated_ner_annotations_basic_dict_mapped_19632.csv' #TODO: can be more generic, use as argument
 
     ### RUN SapBERT normalization and save 
     df_all, results_normalization = run_sapbert_and_save(data_path, df_to_annotate_file_path, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, source_annotations_model, target_entity_type, target_column)
