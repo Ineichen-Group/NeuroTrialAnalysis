@@ -73,6 +73,21 @@ Please note that currently those values are hard-coded and might need to be revi
 5. The elements which have no parent are in the highest level in their hierarchy tree and all of their children should be mapped to that representation.
 6. For each linked entity concept, keep only the parent nodes which do not have a parent of their own in the current dataframe.
 
+## 4.3. Combining BioLinkBERT and AACT Annotations
+The code for this step is in notebook [00-2-linked-snomed-to-hierarchy](./00-2-linked-snomed-to-hierarchy.ipynb).
+
+To achieve a comprehensive list of annotations, we merged the annotations from both BioLinkBERT and AACT models based on the `nct_id`. Our merging strategy was as follows:
+
+1. Preferred BioLinkBERT Annotations: Where both models provided annotations, we prioritized those from BioLinkBERT.
+2. Fallback to AACT Annotations: If BioLinkBERT did not provide an annotation, we used the corresponding AACT annotation.
+3. Special Case for Conditions: For the `CONDITION` entity, we handled annotations with an additional rule. When the BioLinkBERT annotation could not be mapped to a SNOMED (disorder) node, but the AACT annotation could, we preferred the AACT annotation to ensure precise disorder identification.
 
 
-# 5. TSNE embeddings and visualisation
+# 5. Data visualization
+
+## 5.1. Trials Metadata
+
+## 5.2. Top 20 drugs and conditions
+
+
+# 6. TSNE embeddings and visualisation
