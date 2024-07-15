@@ -6,7 +6,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 import re
-from src.embedding import generate_embeddings
+from embedding import generate_embeddings
 import torch
 from tqdm import tqdm
 import time
@@ -71,13 +71,16 @@ def embed_text_to_vec(df, column_to_embed, model_name):
 
 
 if __name__ == '__main__':
-    df = load_and_preprocess_data('./data/annotated_aact/normalized_annotations_unique_19607_with_details.csv')
-    column_to_embed = "preprocessed_trial_no_stopwords"
+    df = load_and_preprocess_data('./data/annotated_aact/snomed_linking_outputs/combined_union_annotations_with_details_18609.csv')
+    column_to_embed = "preprocessed_trial"
+    abstracts = df[column_to_embed].tolist()
+    print("Number of abstracts: ", len(abstracts))
 
     ### BERT
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("running on device: {}".format(device))
-    abstracts = df[column_to_embed].tolist()
+
+
     local_checkpoint = False
     # specifying model
     checkpoint = "microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext"
@@ -118,7 +121,7 @@ if __name__ == '__main__':
     if local_checkpoint:
         model_name = "michiyasunaga_biolinkbert_v2"
     # save embedding
-    np.save(f'./data/embeddings/embeddings_{model_name}', mat)
+    np.save(f'./data/embeddings/embeddings_{model_name}_{len(abstracts)}', mat)
 
     # End timing
     end_time = time.time()

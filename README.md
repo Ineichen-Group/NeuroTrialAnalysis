@@ -72,6 +72,7 @@ Please note that currently those values are hard-coded and might need to be revi
 4. For each linked entity concept, filter its the parent nodes based on whether they appear in the snomed_id node column.
 5. The elements which have no parent are in the highest level in their hierarchy tree and all of their children should be mapped to that representation.
 6. For each linked entity concept, keep only the parent nodes which do not have a parent of their own in the current dataframe.
+7. If the linked concept is of another type, e.g. we are working with disease annotations, but it was linked to subtance node, we would keep the original entity.
 
 ## 4.3. Combining BioLinkBERT and AACT Annotations
 The code for this step is in notebook [00-2-linked-snomed-to-hierarchy](./00-2-linked-snomed-to-hierarchy.ipynb).
@@ -80,7 +81,7 @@ To achieve a comprehensive list of annotations, we merged the annotations from b
 
 1. Preferred BioLinkBERT Annotations: Where both models provided annotations, we prioritized those from BioLinkBERT.
 2. Fallback to AACT Annotations: If BioLinkBERT did not provide an annotation, we used the corresponding AACT annotation.
-3. Special Case for Conditions: For the `CONDITION` entity, we handled annotations with an additional rule. When the BioLinkBERT annotation could not be mapped to a SNOMED (disorder) node, but the AACT annotation could, we preferred the AACT annotation to ensure precise disorder identification.
+3. Special Case: When the BioLinkBERT annotation could not be mapped to a SNOMED (disorder) or (substance) node, but the AACT annotation could, we preferred the AACT annotation to ensure precise disorder identification.
 
 
 # 5. Data visualization
@@ -91,3 +92,15 @@ To achieve a comprehensive list of annotations, we merged the annotations from b
 
 
 # 6. TSNE embeddings and visualisation
+The code in this section is based on the work in ["The landscape of biomedical research"](https://github.com/berenslab/pubmed-landscape/tree/main).
+
+## 6.1. Prepare data for embedding
+Select the trials you want to embed, see [./01-prepare-AACT-for-NER-and-TSNE.ipynb](./01-prepare-AACT-for-NER-and-TSNE.ipynb).
+
+## 6.2. Generate high-dimensional embeddings using a BERT model
+The script [./src/embed_trial_summaries.py](./src/embed_trial_summaries.py) loads and preprocesses data, generates an embedding for each trial using a BERT-based model, and saves the embeddings to a file.
+
+## 6.3. Map to low-dimensional space using TSNE
+The code in [./06-tsne-pipeline-BERT.ipynb](./06-tsne-pipeline-BERT.ipynb) performs the optimization of a t-SNE embedding.
+This process ensures a high-quality t-SNE embedding by initially separating clusters strongly (early exaggeration), gradually reducing the exaggeration to fine-tune the embedding (exaggeration annealing), and finally optimizing without exaggeration for a refined result.
+The outputs is a low-dimensional representation (2D) of the high-dimensional data after the t-SNE optimization process. This embedding is then used for visualization or further analysis.
