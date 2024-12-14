@@ -432,7 +432,7 @@ def plot_label_tags(tsne, colors, legend, x_lim, y_lim, ax=None, middle_value = 
     for i, colr in enumerate(sorted_colors_left):
         if any( [colr=='black', colr=='#0000A6', colr=='#5A0007', colr=='#4A3B53', colr=='#1B4400',
                  colr=='#004D43', colr=='#013349', colr=='#000035', colr=='#300018', colr=='#001E09',
-                 colr=='#372101', colr=='#6508ba'] ):            
+                 colr=='#372101', colr=='#6508ba', colr=='#6B002C', colr=='#006FA6', colr=='#BA0900'] ):            
             # white colored letters
             ax.text(x[i], y[i], sorted_labels_left[i], c='lightgrey', fontsize=fontsize, ha='right', bbox=dict(facecolor=colr,edgecolor='None', alpha=0.8, boxstyle='square', pad=0.05))
             ax.plot([x[i],center_cluster_coordinates_left.x[i]],[y[i],center_cluster_coordinates_left.y[i]], c=colr, linewidth=0.4, clip_on=False)
@@ -450,7 +450,7 @@ def plot_label_tags(tsne, colors, legend, x_lim, y_lim, ax=None, middle_value = 
         # color blanco
         if any( [colr=='black', colr=='#0000A6', colr=='#5A0007', colr=='#4A3B53', colr=='#1B4400',
                  colr=='#004D43', colr=='#013349', colr=='#000035', colr=='#300018', colr=='#001E09',
-                 colr=='#372101', colr=='#6508ba'] ):
+                 colr=='#372101', colr=='#6508ba', colr=='#6B002C', colr=='#006FA6',colr=='#BA0900'] ):
             ax.text(x[i], y[i], sorted_labels_right[i], c='lightgrey', fontsize=fontsize, ha='left', bbox=dict(facecolor=colr,edgecolor='None', alpha=0.8, boxstyle='square', pad=0.05))
             ax.plot([x[i],center_cluster_coordinates_right.x[i]],[y[i],center_cluster_coordinates_right.y[i]], c=colr, linewidth=0.4, clip_on=False)
         else:
