@@ -2,7 +2,14 @@
 Analysis of clinical trials registry data in the field of neuroscience.
 
 # 1. Set up the environment
-TODO: add conda reqs
+Python 3.11.7 was used for this project. Our conda environment can be re-created
+as follows:
+```bib
+conda env create -f environment.yml
+
+conda activate neurotrial-analysis
+```
+Please follow [this docu](https://saturncloud.io/blog/how-to-use-conda-environment-in-a-jupyter-notebook/) to make it accessible in the Notebooks environment.
 
 # 2. Data
 
