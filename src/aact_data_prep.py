@@ -47,7 +47,7 @@ def replace_agency_class(row):
     else:
         return row['agency_class']
     
-def main_process_raw_input_files(metadata_file, ner_annotations_file, enrollment_file, output_files, data_filters=None):
+def main_process_raw_input_files(metadata_file, ner_annotations_file, enrollment_file, output_files, filter_time=True, data_filters=None):
     # Load the input files
     trial_metadata = pd.read_csv(metadata_file)
     ner_annotations = pd.read_csv(ner_annotations_file)[['nct_id']]
@@ -70,6 +70,11 @@ def main_process_raw_input_files(metadata_file, ner_annotations_file, enrollment
     df['start_year'] = df['start_date'].dt.year
     df['completion_date'] = pd.to_datetime(df['completion_date'])
     df['completion_year'] = df['completion_date'].dt.year
+
+    if filter_time:
+        df = df[df['start_year']<2024]
+        df = df[df['start_year']>=2000]
+    
     # Save the merged dataframe to the output file
     df.to_csv(output_files[0], index=False)
 
