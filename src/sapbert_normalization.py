@@ -92,17 +92,18 @@ def softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum(axis=0)
 
-
 def map_query_to_snomed(query: str, 
-                  tokenizer: PreTrainedTokenizer, 
-                  model: PreTrainedModel, 
-                  all_reps_emb_full: np.ndarray, 
-                  snomed_sf_id_pairs: np.ndarray, 
-                  canonical_mapping_dict: Dict[str, str],
-                  n_entities: int = 3) -> Tuple[int, str, str, List[Tuple[str, int]], float]:
+                        tokenizer: PreTrainedTokenizer, 
+                        model: PreTrainedModel, 
+                        all_reps_emb_full: np.ndarray, 
+                        snomed_sf_id_pairs: np.ndarray, 
+                        canonical_mapping_dict: Dict[str, str],
+                        dist_threshold: float = 15, 
+                        n_entities: int = 5) -> Tuple[int, str, str, List[Tuple[str, int]], float]:
     
     """
     Map a query to the closest SNOMED concept using a pre-trained model and return its canonical form.
+    If the distance to the nearest concept exceeds the threshold, return the original query.
 
     Parameters:
     - query (str): The input query string to be mapped.
@@ -111,11 +112,12 @@ def map_query_to_snomed(query: str,
     - all_reps_emb_full (np.ndarray): The array of embeddings for all SNOMED concepts.
     - snomed_sf_id_pairs (np.ndarray): The array of SNOMED concept ID and label pairs.
     - canonical_mapping_dict (Dict[str, str]): A dictionary mapping SNOMED IDs to their canonical forms.
+    - dist_threshold (float): Distance threshold for deciding whether to map the query.
     - n_entities (int): The number of nearest entities to retrieve.
 
     Returns:
-    - Tuple[int, str, str, List[Tuple[str, int]], float]: The predicted SNOMED concept ID, label, its canonical form,
-      a list of the nearest entities, and the minimum distance.
+    - Tuple[int, str, str, List[Tuple[str, int]], float]: The predicted SNOMED concept ID or 0 for no mapping,
+      label, its canonical form or original query, a list of the nearest entities, and the minimum distance.
     """
     # Move embeddings to GPU if available
     if torch.cuda.is_available():
@@ -158,6 +160,10 @@ def map_query_to_snomed(query: str,
         nearest_n_indices = np.argsort(dist[0])[:n_entities]
     for idx in nearest_n_indices:
         nearest_n_entities.append(snomed_sf_id_pairs[idx.item()])
+
+    if min_distance > dist_threshold:
+        # If distance is greater than the threshold, return the original query with no SNOMED mapping
+        return '-1', query, query, nearest_n_entities, round(min_distance, 4)
         
     # Get the predicted SNOMED concept ID and label
     predicted_label = snomed_sf_id_pairs[nn_index]
@@ -176,7 +182,8 @@ def process_row_annotations(
     model: Any, 
     all_reps_emb_full: Any, 
     snomed_sf_id_pairs: Dict[str, str], 
-    canonical_mapping_dict: Dict[str, str]
+    canonical_mapping_dict: Dict[str, str],
+    dist_threshold: float = 15, 
 ) -> Tuple[str, str, str, str, str, Dict[str, List[str]], Dict[str, str]]:
     """
     Processes a row of annotations, mapping terms to SNOMED CT concepts and returning the results.
@@ -208,7 +215,7 @@ def process_row_annotations(
     snomed_terms_canonical = []
     snomed_termids = []
     snomed_norms = []
-    closest_3_entites = []
+    closest_n_entites = []
     min_distances = []  # List to store minimum distances
 
     # Dictionaries to track mappings
@@ -216,12 +223,12 @@ def process_row_annotations(
     term_to_norm = {}   # Each term from the row and the SNOMED norm to which it was mapped
 
     for term in terms:
-        predicted_id, predicted_label, canonical_form, n_3_entities, nn_distance = map_query_to_snomed(term, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict)
+        predicted_id, predicted_label, canonical_form, term_closest_n_entities, nn_distance = map_query_to_snomed(term, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, dist_threshold=dist_threshold)
         snomed_terms.append(predicted_label)
         snomed_terms_canonical.append(canonical_form)
         snomed_termids.append(predicted_id)
         min_distances.append(nn_distance)
-        closest_3_entites.append(n_3_entities)
+        closest_n_entites.append(term_closest_n_entities)
 
         # Populate dictionaries
         #print(canonical_form)
@@ -236,7 +243,7 @@ def process_row_annotations(
     for key in norm_to_terms:
         norm_to_terms[key] = list(set(norm_to_terms[key]))
 
-    return '|'.join(snomed_terms), '|'.join(snomed_termids), '|'.join(snomed_terms_canonical), '|'.join([str(ents) for ents in closest_3_entites]), '|'.join([str(dist) for dist in min_distances]), norm_to_terms, term_to_norm
+    return '|'.join(snomed_terms), '|'.join(snomed_termids), '|'.join(snomed_terms_canonical), '|'.join([str(ents) for ents in closest_n_entites]), '|'.join([str(dist) for dist in min_distances]), norm_to_terms, term_to_norm
 
 def load_snomed_ct_df(data_path: Path, release_id: str):
     """
@@ -344,13 +351,13 @@ def extract_and_save_json_term_mappings(data_path, source_annotations_model, tar
     with open(filename_2, 'w') as f:
         json.dump(combined_norm_to_term, f, indent=4)
 
-def run_sapbert_and_save(data_path, df_file_path_to_map, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, source_annotations_model, target_entity_type, target_column):
+def run_sapbert_and_save(data_path, df_file_path_to_map, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, source_annotations_model, target_entity_type, target_column, cdist_threshold):
     df_all = pd.read_csv(df_file_path_to_map, index_col=False)
     df_all = df_all.head(10)
     start_time = time.time()
-    tqdm.pandas(desc=f"Processing {target_entity_type}")  # This line prepares tqdm to work with pandas apply
+    tqdm.pandas(desc=f"Processing {target_entity_type} with cdist threshold {cdist_threshold}")  # This line prepares tqdm to work with pandas apply
     results_normalization = df_all[target_column].progress_apply(
-        lambda x: pd.Series(process_row_annotations(x, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict))
+        lambda x: pd.Series(process_row_annotations(x, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, cdist_threshold))
     )
     df_all[[f'{source_annotations_model}_snomed_term_{target_entity_type}', 
             f'{source_annotations_model}_snomed_termid_{target_entity_type}', f'{source_annotations_model}_snomed_term_canonical_{target_entity_type}', f'{source_annotations_model}_snomed_closest_n_{target_entity_type}', f'{source_annotations_model}_cdist_{target_entity_type}']] = results_normalization[[0, 1, 2, 3, 4]]
@@ -358,7 +365,7 @@ def run_sapbert_and_save(data_path, df_file_path_to_map, tokenizer, model, all_r
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
-    df_all.to_csv(f'{data_path}/annotated_aact/snomed_linking_outputs/sapbert_normalized_annotations_{source_annotations_model}_{len(df_all)}_{target_entity_type}.csv')
+    df_all.to_csv(f'{data_path}/annotated_aact/snomed_linking_outputs/sapbert_normalized_annotations_{source_annotations_model}_{len(df_all)}_{target_entity_type}_cdist_{cdist_threshold}.csv')
 
     return df_all, results_normalization
 
@@ -374,8 +381,14 @@ def main():
     data_path = "./data"
     concept_type_subset = [
         "disorder",  
-        "substance"
+        "substance",
+        "finding",
+        "procedure",
+        "medicinal product"
     ]
+    included_concept_types_snomed = '_'.join(concept_type_subset)
+    included_concept_types_snomed = included_concept_types_snomed.replace(" ", "_")
+
     SNOMED_PATH = f'{data_path}/snomed/SnomedCT_InternationalRF2_PRODUCTION_{release_id}T120000Z/Snapshot/Terminology'  # you need to download your own SNOMED distribution
     embeddings_directory_path = f'{data_path}/embeddings/snomed_normalization/'
     #target_entity_type = 'interventions' # or 'conditions'
@@ -392,11 +405,16 @@ def main():
     source_annotations_model = args.source_annotations_model
     target_column = f'{target_col_prefix}_{target_entity_type}'
 
+    if target_entity_type == 'conditions':
+        cdist_threshold = 7.73
+    else:
+        cdist_threshold = 8.18
+
     # LOAD SNOMED concepts and their embeddings
-    snomed_df, snomed_sf_id_pairs, all_reps_emb_full = load_snomed_df_and_embeddings(SNOMED_PATH, release_id, concept_type_subset, embeddings_directory_path, 'disorder_substance_emb_batch')
+    snomed_df, snomed_sf_id_pairs, all_reps_emb_full = load_snomed_df_and_embeddings(SNOMED_PATH, release_id, concept_type_subset, embeddings_directory_path, f'{included_concept_types_snomed}_emb_batch')
 
     # LOAD SNOMED mapping from synonyms to canonical forms
-    dict_canoncial_json_file_path = f'{data_path}/snomed/mapping_dictionaries/disorder_substance_canonical_dict.json'
+    dict_canoncial_json_file_path = f'{data_path}/snomed/mapping_dictionaries/{included_concept_types_snomed}_canonical_dict.json'
     with open(dict_canoncial_json_file_path, 'r') as json_file:
          canonical_mapping_dict = json.load(json_file)
     print(f'Length of synonyms to canonical mapping dictionary: {len(canonical_mapping_dict)}')
@@ -409,7 +427,7 @@ def main():
     df_to_annotate_file_path = f'{data_path}/annotated_aact/ner_outputs/aggregated_ner_annotations_basic_dict_mapped_19632.csv' #TODO: can be more generic, use as argument
 
     ### RUN SapBERT normalization and save 
-    df_all, results_normalization = run_sapbert_and_save(data_path, df_to_annotate_file_path, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, source_annotations_model, target_entity_type, target_column)
+    df_all, results_normalization = run_sapbert_and_save(data_path, df_to_annotate_file_path, tokenizer, model, all_reps_emb_full, snomed_sf_id_pairs, canonical_mapping_dict, source_annotations_model, target_entity_type, target_column, cdist_threshold)
 
     extract_and_save_json_term_mappings(data_path, source_annotations_model, target_entity_type, len(df_all), results_normalization[6], results_normalization[5])
 
