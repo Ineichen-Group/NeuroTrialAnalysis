@@ -31,9 +31,9 @@ def viz_purpose_status(trial_metadata, output_file):
         ax1.text(v + 50, i, str(v), va='center', color='black', fontsize=12)
     ax1.set_title('Primary Trial Purpose', fontsize=14)
     ax1.set_xlabel('Count of Unique Trials', fontsize=14)
-    ax1.set_xlim(0, max(purpose_type_counts)+1500)  # Adjusting the x limits for visibility
+    ax1.set_xlim(0, max(purpose_type_counts)*1.2)  # Adjusting the x limits for visibility
     ax1.grid(axis='x', linestyle='--', alpha=0.6, zorder=1)
-    ax1.set_xlim(0, max(purpose_type_counts)+1800) # Adjusted to max count for relevancy
+    ax1.set_xlim(0, max(purpose_type_counts)*1.2) # Adjusted to max count for relevancy
     ax1.tick_params(axis='both', labelsize=13)  # Increase tick label size
     ax1.text(-0.03, 1.05, 'A', transform=ax1.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
 
@@ -43,9 +43,9 @@ def viz_purpose_status(trial_metadata, output_file):
         ax2.text(v + 50, i, str(v), va='center', color='black', fontsize=12)
     ax2.set_title('Overall Trial Status', fontsize=14)
     ax2.set_xlabel('Count of Unique Trials', fontsize=14)
-    ax2.set_xlim(0, max(status_type_counts)+1000)  # Adjusting the x limits for visibility
+    ax2.set_xlim(0, max(status_type_counts)*1)  # Adjusting the x limits for visibility
     ax2.grid(axis='x', linestyle='--', alpha=0.6, zorder=1)
-    ax2.set_xlim(0, max(status_type_counts)+1500) # Adjusted to max count for relevancy
+    ax2.set_xlim(0, max(status_type_counts)*1.2) # Adjusted to max count for relevancy
     ax2.tick_params(axis='both', labelsize=13)  # Increase tick label size
     ax2.text(-0.03, 1.05, 'B', transform=ax2.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
     # Adjust layout and display the plots
@@ -198,7 +198,7 @@ def viz_allocation(trial_design, output_file):
     axs[0].grid(axis='x', linestyle='--', alpha=0.6, zorder=1)
     axs[0].set_xlabel('Count of Unique Trials', fontsize=14)
     axs[0].set_title('Allocation', fontsize=14)
-    axs[0].set_xlim(0, max(allocation_counts) + 1500)  # Adjusted to max count for relevancy
+    axs[0].set_xlim(0, max(allocation_counts)*1.2)  # Adjusted to max count for relevancy
     axs[0].text(-0.02, 1.09, 'A', transform=axs[0].transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
 
     ### PLOT B
@@ -276,7 +276,7 @@ def viz_masking(trial_design, output_file):
     axs[0].grid(axis='x', linestyle='--', alpha=0.6, zorder=1)
     axs[0].set_xlabel('Count of Unique Trials', fontsize=14)
     axs[0].set_title('Masking', fontsize=14)
-    axs[0].set_xlim(0, max(masking_counts) + 630)  # Adjusted to max count for relevancy
+    axs[0].set_xlim(0, max(masking_counts)*1.1)  # Adjusted to max count for relevancy
     axs[0].text(-0.02, 1.08, 'A', transform=axs[0].transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
 
     # Plot for Change in Masking Over Time (Plot B)
@@ -384,7 +384,7 @@ def viz_facilities_enrollment(trial_design, trials_with_participants, output_fil
     axs[1].set_xlabel('Number of Participants (Actual or Anticipated)', fontsize=14)
     axs[1].set_title('Number of Enrolled Participants', fontsize=14)
     axs[1].text(-0.01, 1.08, 'B', transform=axs[1].transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
-    axs[1].set_ylim(0, max(enrollment_class_counts) + 1000) # Adjusted to max count for relevancy
+    axs[1].set_ylim(0, max(enrollment_class_counts)*1.2) # Adjusted to max count for relevancy
 
     plt.tight_layout()
 
@@ -547,7 +547,7 @@ def viz_sponsorship_lead(trial_metadata, output_file):
     # Adding text labels to the bars
     for index, value in enumerate(overall_distribution):
         ax1.text(value, index, f' {int(value)}', va='center', ha='left')
-    ax1.set_xlim(0, max(overall_distribution) + 500)
+    ax1.set_xlim(0, max(overall_distribution)* 1.1)
     ax1.tick_params(axis='both', labelsize=13)  # Increase tick label size
 
     # Plot 2 - Yearly Distribution (now plot B)
