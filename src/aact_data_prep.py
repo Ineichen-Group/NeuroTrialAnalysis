@@ -40,10 +40,23 @@ def bin_number_of_outcomes_column(number_of_outcomes_series):
 
 # Define a function to replace agency_class based on sponsor_name
 def replace_agency_class(row):
-    if 'university' in row['sponsor_name'].lower() or ('universita' in row['sponsor_name'].lower()) or ('université' in row['sponsor_name'].lower()) or ('universität' in row['sponsor_name'].lower()) or ('universiteit' in row['sponsor_name'].lower())or ('universidad' in row['sponsor_name'].lower()):
+    sponsor_lower = row['sponsor_name'].lower()
+    
+    university_keywords = ['university', 'universita', 'université', 'universität', 
+                           'universiteit', 'universidad'] + ['universite', 'università', 'universiti', 'universitesi', 'universitário']
+    
+    hospital_keywords = ['hospital', 'hôpital', 'hopital', 'krankenhaus', 'klinikum', 
+                         'ospedale', 'ziekenhuis', 'sanatorio', 'medical center', 
+                         'health system', 'memorial', 'infirmary', 'med center', 
+                         'centro médico']
+    
+    # Then check if it only contains university terms
+    if any(term in sponsor_lower for term in university_keywords):
         return 'UNIVERSITY'
-    elif 'hospital' in row['sponsor_name'].lower():
+    # Then check if it only contains hospital terms
+    elif any(term in sponsor_lower for term in hospital_keywords):
         return 'HOSPITAL'
+    # Otherwise, return the original agency_class
     else:
         return row['agency_class']
     
